@@ -14,3 +14,4 @@ pypdf==6.13.2
 PyYAML==6.0.3
 python-dotenv==1.2.2
 requests>=2.31.0
+rank-bm25>=0.2.2

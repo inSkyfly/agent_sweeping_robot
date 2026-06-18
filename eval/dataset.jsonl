@@ -1,0 +1,18 @@
+{"id": "q01", "query": "小户型适合哪些扫地机器人", "category": "选购", "expected_keywords": ["小户型", "80㎡", "轻便"]}
+{"id": "q02", "query": "激光导航和视觉导航怎么选", "category": "选购", "expected_keywords": ["激光导航", "视觉导航"]}
+{"id": "q03", "query": "有宠物家庭选什么扫地机器人", "category": "选购", "expected_keywords": ["宠物", "防缠绕", "吸力"]}
+{"id": "q04", "query": "扫地机器人吸力多少够用", "category": "选购", "expected_keywords": ["3000Pa", "吸力"]}
+{"id": "q05", "query": "自动集尘功能有必要吗", "category": "选购", "expected_keywords": ["集尘", "集尘袋"]}
+{"id": "q06", "query": "机器人开机没反应怎么办", "category": "故障", "expected_keywords": ["开机无反应", "电源", "电池"]}
+{"id": "q07", "query": "扫地机器人连不上WiFi", "category": "故障", "expected_keywords": ["WiFi", "2.4G", "密码"]}
+{"id": "q08", "query": "吸力明显下降怎么处理", "category": "故障", "expected_keywords": ["吸力下降", "尘盒", "滤网", "主刷"]}
+{"id": "q09", "query": "机器人找不到充电座", "category": "故障", "expected_keywords": ["充电座", "回充"]}
+{"id": "q10", "query": "主刷不旋转怎么修", "category": "故障", "expected_keywords": ["主刷不旋转", "电机"]}
+{"id": "q11", "query": "扫地机器人多久清理一次尘盒", "category": "保养", "expected_keywords": ["尘盒", "清理"]}
+{"id": "q12", "query": "HEPA滤网怎么保养", "category": "保养", "expected_keywords": ["HEPA", "滤网"]}
+{"id": "q13", "query": "拖布发霉异味怎么办", "category": "保养", "expected_keywords": ["拖布", "烘干", "发霉"]}
+{"id": "q14", "query": "电池续航变短怎么办", "category": "保养", "expected_keywords": ["续航", "电池"]}
+{"id": "q15", "query": "扫拖一体和纯扫地怎么选", "category": "扫拖", "expected_keywords": ["扫拖", "拖地", "拖布"]}
+{"id": "q16", "query": "木地板适合什么拖地模式", "category": "扫拖", "expected_keywords": ["木地板", "拖布"]}
+{"id": "q17", "query": "地毯场景扫地机器人怎么选", "category": "选购", "expected_keywords": ["地毯", "增压", "吸力"]}
+{"id": "q18", "query": "机器人频繁碰撞家具", "category": "故障", "expected_keywords": ["碰撞", "避障", "传感器"]}

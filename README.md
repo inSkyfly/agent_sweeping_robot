@@ -1,133 +1,168 @@
-# 智扫通机器人智能客服
+# 扫地机器人智能客服
 
-基于 LangChain + LangGraph + Chroma 的 RAG 智能客服 Agent，使用 Streamlit 提供 Web 聊天界面。支持知识库问答、工具调用（天气、用户数据等）及使用报告生成。
+基于 LangChain + LangGraph + Chroma 的垂直领域 RAG-ReAct 智能客服 Agent，面向扫地/扫拖机器人选购、故障、保养等场景。支持多轮对话记忆、Runtime Context 工具注入、混合检索、RAG 评估与报告生成子图。
+
+## 项目亮点（简历可写）
+
+- **ReAct 工具编排**：7+ 工具闭环（RAG、天气、定位、用户数据、报告子图）
+- **LangGraph Middleware**：`@dynamic_prompt` 按场景切换系统/报告 Prompt
+- **多轮记忆**：滑动窗口（最近 10 轮）传入 Agent，支持上下文追问
+- **Session Context 注入**：`user_id` / `current_month` / `city` 通过 Runtime Context 传入工具，替代随机 Mock
+- **混合检索 RAG**：向量 + BM25 混合检索，Query 改写，Hit@3 **100%**（18 条评测集）
+- **报告生成子图**：LangGraph StateGraph 固化 SOP（拉取数据 → 生成报告）
+- **可观测 UI**：Streamlit 展示工具调用链路（思考过程 Expander）
+
+## 架构
+
+```mermaid
+flowchart TB
+    subgraph ui [Streamlit_UI]
+        ChatHistory[多轮消息展示]
+        ToolTrace[工具调用可视化]
+    end
+
+    subgraph agent [LangGraph_Agent]
+        Memory[Session_Memory]
+        ReAct[ReAct_Loop]
+        MW[middleware_dynamic_prompt]
+        ReportSG[Report_Subgraph]
+    end
+
+    subgraph rag [RAG_Layer]
+        Indexer[启动时增量索引]
+        Retriever[Hybrid_Retriever]
+        Rewrite[Query_Rewrite]
+        Eval[RAG_Eval]
+    end
+
+    subgraph ctx [Session_Context]
+        UserId[用户ID]
+        Month[当前月份]
+        City[城市覆盖]
+    end
+
+    ChatHistory --> Memory
+    Memory --> ReAct
+    ReAct --> MW
+    ReAct --> rag
+    ReAct --> ctx
+    ReAct --> ReportSG
+    ToolTrace --> ReAct
+```
 
 ## 环境要求
 
 - Python **3.10+**（推荐 **3.11** 或 **3.12**）
-- 阿里云 DashScope API Key（通义千问大模型 + 向量嵌入）
+- 阿里云 DashScope API Key（通义千问 + 向量嵌入）
 
 ## 快速开始
 
-### 1. 克隆 / 进入项目目录
+### 1. 进入项目目录
 
 ```powershell
-cd "d:\AiAgent\AI大模型RAG与智能体开发_Agent项目"
+cd "d:\AiAgent\agent_sweeping_robot"
 ```
 
-### 2. 创建虚拟环境（推荐）
+### 2. 创建虚拟环境
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -U pip
-```
-
-> 若 PowerShell 提示无法执行脚本，先运行：
-> `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
-
-### 3. 安装依赖
-
-```powershell
 pip install -r requirements.txt
 ```
 
-### 4. 配置 API Key
-
-在 [阿里云百炼 / DashScope 控制台](https://help.aliyun.com/document_detail/611472.html) 申请 API Key，任选一种方式配置：
-
-**方式一：`.env` 文件（推荐）**
+### 3. 配置 API Key
 
 ```powershell
 copy .env.example .env
 ```
 
-编辑 `.env`，填入你的密钥：
+编辑 `.env`，填入 `DASHSCOPE_API_KEY=sk-xxxxxxxx`。
 
-```text
-DASHSCOPE_API_KEY=sk-xxxxxxxxxxxxxxxx
-```
-
-**方式二：环境变量**
-
-当前终端会话：
-
-```powershell
-$env:DASHSCOPE_API_KEY = "你的API密钥"
-```
-
-永久生效（用户级）：
-
-```powershell
-[System.Environment]::SetEnvironmentVariable("DASHSCOPE_API_KEY", "你的API密钥", "User")
-```
-
-设置永久变量后需重新打开终端。
-
-### 5. 初始化知识库（可选）
-
-首次运行会将 `data/` 目录下的 `.txt` / `.pdf` 文件写入 Chroma 向量库：
-
-```powershell
-python -m rag.vector_store
-```
-
-也可跳过此步，启动应用后 RAG 服务会自动加载知识库。
-
-### 6. 启动应用
+### 4. 启动应用
 
 ```powershell
 streamlit run app.py
 ```
 
-启动成功后，终端会显示类似：
+若出现 `Fatal error in launcher`（项目从旧目录迁移后 `.venv` 内路径失效），改用：
 
-```text
-You can now view your Streamlit app in your browser.
-Local URL: http://localhost:8501
+```powershell
+python -m streamlit run app.py
 ```
 
-浏览器将打开 **智扫通机器人智能客服** 聊天界面。
+应用启动时会**自动检测并增量索引** `data/` 下的知识库文件（基于 MD5 去重）。浏览器访问 `http://localhost:8501`。
 
-> **首次运行提示**：若出现 `Welcome to Streamlit!` 并询问邮箱，直接按 **Enter**（留空即可），服务会继续启动。项目已包含 `.streamlit/config.toml`，后续不会再弹出该提示。
+> 若向量库异常，删除 `chroma_db/` 和 `md5.text` 后重启应用即可自动重建。
 
 ## 命令行测试
 
-不启动 Web 界面，直接测试 Agent：
-
 ```powershell
+# 测试 Agent
 python -m agent.react_agent
-```
 
-测试 RAG 检索与总结：
-
-```powershell
+# 测试 RAG 检索与总结
 python -m rag.rag_service
+
+# 手动重建知识库索引
+python -m rag.vector_store
+
+# 运行 RAG 评估（生成 eval/report.md）
+python -m eval.rag_eval
 ```
+
+## RAG 评估结果
+
+基于 18 条人工标注问答对（`eval/dataset.jsonl`），评估指标如下：
+
+| 指标 | 结果 |
+|------|------|
+| Retrieval Hit@3 | **100.0%** |
+| Answer Faithfulness | **100.0%** |
+
+完整明细见 [eval/report.md](eval/report.md)。
+
+## 面试 Demo 脚本
+
+### 场景 1：多轮追问（考察记忆）
+
+1. 「小户型适合哪些扫地机器人？」
+2. 「那噪音大吗？」（Agent 应结合上一轮上下文回答）
+
+### 场景 2：工具链（考察 ReAct 编排）
+
+「我在深圳，今天适合扫地吗？」
+
+预期工具链：`get_user_location` / 城市上下文 → `get_weather` → `rag_summarize`（湿度/清洁建议）
+
+### 场景 3：报告生成（考察子图 + 动态 Prompt）
+
+侧边栏选择用户 ID `1001`，输入：「帮我生成使用报告」
+
+预期：调用 `generate_usage_report` 子图，输出 Markdown 格式个性化报告。
 
 ## 项目结构
 
 ```
-├── app.py                  # Streamlit 入口
+├── app.py                      # Streamlit 入口（多轮记忆 + 工具链路可视化）
 ├── agent/
-│   ├── react_agent.py      # ReAct Agent 定义
-│   └── tools/              # Agent 工具与中间件
+│   ├── react_agent.py          # ReAct Agent（滑动窗口 + Context 注入）
+│   ├── report_subgraph.py      # 报告生成 LangGraph 子图
+│   └── tools/
+│       ├── agent_tools.py      # 工具定义（Runtime Context）
+│       └── middleware.py       # 工具监控 + 动态 Prompt
 ├── rag/
-│   ├── vector_store.py     # Chroma 向量库管理
-│   └── rag_service.py      # RAG 检索 + 总结链
-├── model/
-│   └── factory.py          # 通义千问 / 嵌入模型工厂
-├── config/
-│   ├── rag.yml             # 模型名称配置
-│   ├── chroma.yml          # 向量库与分片参数
-│   ├── agent.yml           # Agent 外部数据路径
-│   └── prompts.yml         # 提示词文件路径
-├── prompts/                # 系统 / RAG / 报告提示词模板
-├── data/                   # 知识库文档（txt / pdf）
-├── data/external/          # 用户报告 CSV 数据
-├── chroma_db/              # 向量库持久化目录（运行后生成）
-├── logs/                   # 运行日志
-└── requirements.txt        # Python 依赖
+│   ├── vector_store.py         # Chroma + Hybrid 检索 + 增量索引
+│   └── rag_service.py          # Query 改写 + RAG 总结链
+├── eval/
+│   ├── dataset.jsonl           # 评估数据集（18 条）
+│   ├── rag_eval.py             # Hit@3 + Faithfulness 评估
+│   └── report.md               # 评估报告
+├── config/                     # YAML 配置
+├── prompts/                    # 系统 / RAG / 报告 Prompt
+├── data/                       # 知识库 + 用户报告 CSV
+└── utils/                      # 配置、日志、外部数据加载
 ```
 
 ## 配置说明
@@ -135,53 +170,43 @@ python -m rag.rag_service
 | 文件 | 说明 |
 |------|------|
 | `config/rag.yml` | 对话模型 `qwen3-max`，嵌入模型 `text-embedding-v4` |
-| `config/chroma.yml` | 向量库路径、检索数量、文本分片参数 |
-| `config/agent.yml` | 外部 CSV 数据路径（报告生成） |
-| `config/prompts.yml` | 系统提示词、RAG 提示词、报告提示词路径 |
+| `config/chroma.yml` | 向量库、分片、混合检索、Query 改写开关 |
+| `config/agent.yml` | 外部 CSV 数据路径 |
+| `config/prompts.yml` | Prompt 模板路径 |
+
+`config/chroma.yml` 关键项：
+
+- `enable_hybrid_search`: 开启向量 + BM25 混合检索
+- `enable_query_rewrite`: 开启 Query 改写
+- `hybrid_k` / `hybrid_weights`: 混合检索参数
+
+## 简历项目描述（参考）
+
+> 扫地机器人 — 垂直领域 RAG-ReAct 智能客服。基于 LangGraph 实现工具编排与 `@dynamic_prompt` 场景切换；支持多轮记忆、Runtime Context 注入、混合检索 + RAG 评估（Hit@3 100%）；集成天气/定位/用户报告等多工具链路，Streamlit 可视化 ReAct 执行过程。
 
 ## 常见问题
 
-### Streamlit 只显示 Welcome 就退出了
+### IP 定位不准确
 
-这是首次运行的邮箱订阅提示，不是报错。在 `Email:` 后**直接按 Enter**（留空），等待出现 `Local URL: http://localhost:8501` 即表示成功。也可手动访问该地址。
-
-### IP 定位城市不准确
-
-公网 IP 定位本身存在误差（运营商机房、宽带归属地、VPN 等都会导致偏差）。可任选一种方式：
-
-1. **侧边栏手动填写城市**（推荐）：启动后在页面左侧「所在城市」输入框填写，例如 `深圳`
-2. **配置高德 Key**：在 `.env` 中设置 `AMAP_API_KEY`，国内定位更准
-3. **对话中直接说明城市**：例如「我在杭州，今天适合扫地吗？」
-
-### API 认证失败 / `Did not find dashscope_api_key`
-
-说明未配置 `DASHSCOPE_API_KEY`。请复制 `.env.example` 为 `.env` 并填入密钥，或在终端执行 `$env:DASHSCOPE_API_KEY = "你的密钥"` 后重新运行 `streamlit run app.py`。
-
-### `ModuleNotFoundError`
-
-确认已激活虚拟环境，并执行 `pip install -r requirements.txt`。
+侧边栏手动填写城市，或在 `.env` 配置 `AMAP_API_KEY`。
 
 ### API 认证失败
 
-检查 `DASHSCOPE_API_KEY` 是否正确，账户是否开通对应模型权限。
+检查 `DASHSCOPE_API_KEY` 是否正确配置。
 
-### Python 3.14 安装报错
-
-部分依赖可能尚未完全支持 Python 3.14，建议改用 Python 3.11 或 3.12 创建虚拟环境。
-
-### 向量库异常 / 需要重建索引
-
-删除 `chroma_db/` 目录和 `md5.text` 文件，然后重新执行：
+### 向量库需要重建
 
 ```powershell
-python -m rag.vector_store
+Remove-Item -Recurse -Force chroma_db
+Remove-Item -Force md5.text
+streamlit run app.py
 ```
 
 ## 技术栈
 
 - **LLM**：阿里云通义千问（DashScope）
-- **Agent 框架**：LangChain + LangGraph
+- **Agent 框架**：LangChain + LangGraph（Middleware、子图）
 - **向量数据库**：Chroma
+- **检索**：向量 + BM25 混合检索（`rank-bm25`）
 - **Web 界面**：Streamlit
-- **IP 定位**：ip9.com.cn / 太平洋 IP 库（可选高德 Key，无需 Key 也可用手动指定城市）
-- **天气数据**：Open-Meteo（免费，无需 Key）
+- **外部 API**：Open-Meteo（天气）、多源 IP 定位
